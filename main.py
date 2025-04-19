@@ -56,29 +56,29 @@ Instructions:
    - Suggested questions to ask the doctor
 Format your output in structured JSON like this:
 
-{
-  "labHistory": {
+{{
+  "labHistory": {{
     "testName": [
-      {
+      {{
         "value": <number>,
         "normalRange": [min, max],
         "status": "low/high/normal"
-      }
+      }}
     ]
-  },
-  "summary": {
-    "testName": {
+  }},
+  "summary": {{
+    "testName": {{
       "latestValue": <number>,
       "trend": "increasing/decreasing/stable",
       "status": "low/high/normal"
-    }
-  },
-  "doctorConsultation": {
+    }}
+  }},
+  "doctorConsultation": {{
     "recommended": true/false,
     "reason": "text",
     "questions": ["question 1", "question 2"]
-  }
-}
+  }}
+}}
 Only return valid JSON with no explanation.
 """
 
@@ -103,10 +103,8 @@ Only return valid JSON with no explanation.
     except Exception as e:
         return f"Error during Groq API call:\n{e}"
 
-# Parse AI response as JSON
 def parse_and_format_result(output):
     try:
-        # Directly parse JSON from Groq's response
         return json.loads(output)
     except Exception as e:
         return {
@@ -142,7 +140,6 @@ def upload_file():
 
     print("Analyzing with Groq LLaMA model...\n")
     result = analyze_medical_report_with_groq(file_text)
-
     structured_result = parse_and_format_result(result)
 
     os.remove(temp_file_path)
