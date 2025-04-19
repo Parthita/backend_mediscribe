@@ -15,7 +15,6 @@ GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 # Initialize Flask app
 app = Flask(__name__)
 
-# Step 1: Extract text from PDF
 def extract_text_from_pdf(pdf_path):
     text = ""
     try:
@@ -26,7 +25,6 @@ def extract_text_from_pdf(pdf_path):
         print("Error reading PDF:", e)
     return text.strip()
 
-# Step 2: Extract text from Image using OCR
 def extract_text_from_image(image_path):
     try:
         img = Image.open(image_path)
@@ -36,7 +34,6 @@ def extract_text_from_image(image_path):
         print("Error reading image:", e)
     return ""
 
-# Step 3: Analyze using Groq
 def analyze_medical_report_with_groq(text):
     if not text:
         return "No text extracted from the file."
@@ -48,12 +45,41 @@ You are a medical assistant AI. A patient has uploaded the following medical rep
 
 Instructions:
 1. Identify all test values (e.g., Hemoglobin, WBC, etc.).
-2. Compare each with normal reference ranges.
-3. Mention if each value is Normal / Low / High.
-4. Summarize what these results could indicate (like possible conditions).
-5. Suggest if a doctor consultation is needed and what questions the user should ask.
+2. Provide historical values if available.
+3. Compare each with normal reference ranges.
+4. Mention if each value is Normal / Low / High.
+5. Detect trend if multiple values are available (e.g., increasing/decreasing).
+6. Provide a simple summary per test.
+7. Finally, provide a doctor consultation section with:
+   - Whether consultation is needed (true/false)
+   - Reason why
+   - Suggested questions to ask the doctor
+Format your output in structured JSON like this:
 
-Provide a clear and simple explanation suitable for non-medical users.
+{
+  "labHistory": {
+    "testName": [
+      {
+        "value": <number>,
+        "normalRange": [min, max],
+        "status": "low/high/normal"
+      }
+    ]
+  },
+  "summary": {
+    "testName": {
+      "latestValue": <number>,
+      "trend": "increasing/decreasing/stable",
+      "status": "low/high/normal"
+    }
+  },
+  "doctorConsultation": {
+    "recommended": true/false,
+    "reason": "text",
+    "questions": ["question 1", "question 2"]
+  }
+}
+Only return valid JSON with no explanation.
 """
 
     headers = {
@@ -77,42 +103,18 @@ Provide a clear and simple explanation suitable for non-medical users.
     except Exception as e:
         return f"Error during Groq API call:\n{e}"
 
-# Step 4: Parse AI Output and format as JSON
+# Parse AI response as JSON
 def parse_and_format_result(output):
-    result_data = {
-        "comparison": [],
-        "summary": "",
-        "consultation_suggestion": ""
-    }
-    
-    lines = output.splitlines()
+    try:
+        # Directly parse JSON from Groq's response
+        return json.loads(output)
+    except Exception as e:
+        return {
+            "error": "Failed to parse AI output as JSON",
+            "raw_output": output,
+            "details": str(e)
+        }
 
-    # Extracting Test Values and Status
-    for line in lines:
-        if line.strip():
-            parts = line.split(":")
-            if len(parts) > 1:
-                test_name = parts[0].strip()
-                status = parts[1].strip()
-                result_data["comparison"].append({
-                    "test_name": test_name,
-                    "status": status
-                })
-    
-    # Extract Summary and Consultation Suggestion
-    summary_started = False
-    for line in lines:
-        if "Summary:" in line:
-            summary_started = True
-        if summary_started:
-            if "Consultation Suggestion:" in line:
-                result_data["consultation_suggestion"] = line.split("Consultation Suggestion:")[-1].strip()
-            elif "Summary" in line and result_data["summary"] == "":
-                result_data["summary"] = line.strip()
-
-    return result_data
-
-# Step 5: Handle File Upload and Processing
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -122,12 +124,10 @@ def upload_file():
     if file.filename == '':
         return jsonify({"error": "No selected file"}), 400
 
-    # Save file temporarily to process it
     file_extension = os.path.splitext(file.filename)[1].lower()
     temp_file_path = f"temp_file{file_extension}"
     file.save(temp_file_path)
 
-    # Check file type and extract text
     if file_extension == ".pdf":
         print("Reading the medical report from PDF...")
         file_text = extract_text_from_pdf(temp_file_path)
@@ -143,14 +143,10 @@ def upload_file():
     print("Analyzing with Groq LLaMA model...\n")
     result = analyze_medical_report_with_groq(file_text)
 
-    # Format the result into structured JSON
     structured_result = parse_and_format_result(result)
 
-    # Clean up the temporary file
     os.remove(temp_file_path)
-
     return jsonify(structured_result)
 
-# Run Flask app
 if __name__ == "__main__":
     app.run(debug=True)
