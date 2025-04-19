@@ -79,25 +79,22 @@ Provide a clear and simple explanation suitable for non-medical users.
 
 # Step 4: Parse AI Output and format as JSON
 def parse_and_format_result(output):
-    result_data = {}
+    result_data = {
+        "comparison": [],
+        "summary": "",
+        "consultation_suggestion": ""
+    }
     
-    # Initialize categories
-    result_data["test_results"] = []
-    result_data["summary"] = ""
-    result_data["consultation_suggestion"] = ""
-
     lines = output.splitlines()
-    
-    # Extracting Test Values, Status, and Formatting them
+
+    # Extracting Test Values and Status
     for line in lines:
         if line.strip():
             parts = line.split(":")
             if len(parts) > 1:
                 test_name = parts[0].strip()
                 status = parts[1].strip()
-
-                # Creating the structured output for each test result
-                result_data["test_results"].append({
+                result_data["comparison"].append({
                     "test_name": test_name,
                     "status": status
                 })
