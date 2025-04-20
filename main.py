@@ -1,16 +1,18 @@
-import fitz  # PyMuPDF
+import fitz  
 import requests
 import json
 from PIL import Image
 import pytesseract
+import io
 import os
 from flask import Flask, request, jsonify
 
-# --- Groq API Setup ---
-GROQ_API_KEY = "your_groq_api_key"
+# Groq API Setup
+GROQ_API_KEY = "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"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
+# Initialize Flask app
 app = Flask(__name__)
 
 def extract_text_from_pdf(pdf_path):
@@ -43,16 +45,17 @@ You are a medical assistant AI. A patient has uploaded the following medical rep
 
 Instructions:
 1. Identify all test values (e.g., Hemoglobin, WBC, etc.).
-2. Compare each with normal reference ranges.
-3. Mention if each value is Normal / Low / High.
-4. Detect trend if multiple values are available.
-5. Provide a simple summary per test.
-6. Finally, provide a doctor consultation section with:
+2. Provide historical values if available.
+3. Compare each with normal reference ranges.
+4. Mention if each value is Normal / Low / High.
+5. Detect trend if multiple values are available (e.g., increasing/decreasing).
+6. Provide a simple summary per test.
+7. Finally, provide a doctor consultation section with:
    - Whether consultation is needed (true/false)
    - Reason why
    - Suggested questions to ask the doctor
+Format your output in structured JSON like this:
 
-Format output as strict JSON:
 {{
   "labHistory": {{
     "testName": [
@@ -76,8 +79,7 @@ Format output as strict JSON:
     "questions": ["question 1", "question 2"]
   }}
 }}
-
-Return only valid JSON, no markdown, no extra explanation.
+Only return valid JSON with no explanation.
 """
 
     headers = {
@@ -103,9 +105,6 @@ Return only valid JSON, no markdown, no extra explanation.
 
 def parse_and_format_result(output):
     try:
-        output = output.strip()
-        if output.startswith("```") and output.endswith("```"):
-            output = output[3:-3].strip()
         return json.loads(output)
     except Exception as e:
         return {
@@ -134,11 +133,9 @@ def upload_file():
         print("Reading the medical report from Image...")
         file_text = extract_text_from_image(temp_file_path)
     else:
-        os.remove(temp_file_path)
         return jsonify({"error": "Unsupported file type"}), 400
 
     if not file_text:
-        os.remove(temp_file_path)
         return jsonify({"error": "No text extracted from the file"}), 400
 
     print("Analyzing with Groq LLaMA model...\n")
@@ -146,18 +143,7 @@ def upload_file():
     structured_result = parse_and_format_result(result)
 
     os.remove(temp_file_path)
-
-    if "error" in structured_result:
-        return jsonify(structured_result), 500
-
-    # Split output into 3 parts
-    response_payload = {
-        "labHistory": structured_result.get("labHistory", {}),
-        "summary": structured_result.get("summary", {}),
-        "doctorConsultation": structured_result.get("doctorConsultation", {})
-    }
-
-    return jsonify(response_payload), 200
+    return jsonify(structured_result)
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True) 
