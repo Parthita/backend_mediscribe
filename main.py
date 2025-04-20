@@ -7,7 +7,7 @@ import os
 from flask import Flask, request, jsonify
 
 # Groq API Setup
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "_"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
