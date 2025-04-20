@@ -5,10 +5,10 @@ from PIL import Image
 import pytesseract
 import io
 import os
-from flask import Flask, request, send_file, jsonify
+from flask import Flask, request, jsonify
 
 # Groq API Setup
-GROQ_API_KEY = os.getenv("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")  # Use environment variable for security
+GROQ_API_KEY = "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"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
@@ -103,6 +103,16 @@ Only return valid JSON with no explanation.
     except Exception as e:
         return f"Error during Groq API call:\n{e}"
 
+def parse_and_format_result(output):
+    try:
+        return json.loads(output)
+    except Exception as e:
+        return {
+            "error": "Failed to parse AI output as JSON",
+            "raw_output": output,
+            "details": str(e)
+        }
+
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -130,26 +140,10 @@ def upload_file():
 
     print("Analyzing with Groq LLaMA model...\n")
     result = analyze_medical_report_with_groq(file_text)
+    structured_result = parse_and_format_result(result)
 
-    try:
-        structured_result = json.loads(result)
-    except Exception as e:
-        return jsonify({
-            "error": "Failed to parse AI output as JSON",
-            "raw_output": result,
-            "details": str(e)
-        }), 500
-
-    # Save to JSON file
-    output_path = "medical_analysis.json"
-    with open(output_path, "w") as f:
-        json.dump(structured_result, f, indent=2)
-
-    # Delete the temp input file
     os.remove(temp_file_path)
-
-    # Send the file to Flutter
-    return send_file(output_path, as_attachment=True, mimetype='application/json')
+    return jsonify(structured_result)
 
 if __name__ == "__main__":
     app.run(debug=True)
