@@ -3,7 +3,6 @@ import requests
 import json
 from PIL import Image
 import pytesseract
-import io
 import os
 from flask import Flask, request, jsonify
 
