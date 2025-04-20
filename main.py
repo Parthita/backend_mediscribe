@@ -5,6 +5,7 @@ from PIL import Image
 import pytesseract
 import io
 import os
+import re
 from flask import Flask, request, jsonify
 
 # Groq API Setup
@@ -105,7 +106,11 @@ Only return valid JSON with no explanation.
 
 def parse_and_format_result(output):
     try:
-        return json.loads(output)
+        # Remove triple backticks and "json" tag if present
+        cleaned_output = re.sub(r"^```(?:json)?|```$", "", output.strip(), flags=re.MULTILINE).strip()
+
+        # Convert to JSON
+        return json.loads(cleaned_output)
     except Exception as e:
         return {
             "error": "Failed to parse AI output as JSON",
