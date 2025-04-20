@@ -7,14 +7,12 @@ import os
 from flask import Flask, request, jsonify
 
 # --- Groq API Setup ---
-GROQ_API_KEY = "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"
+GROQ_API_KEY = "your_groq_api_key"
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
 
-# --- Flask App ---
 app = Flask(__name__)
 
-# --- Function to extract text from PDF ---
 def extract_text_from_pdf(pdf_path):
     text = ""
     try:
@@ -25,7 +23,6 @@ def extract_text_from_pdf(pdf_path):
         print("Error reading PDF:", e)
     return text.strip()
 
-# --- Function to extract text from Image ---
 def extract_text_from_image(image_path):
     try:
         img = Image.open(image_path)
@@ -35,7 +32,6 @@ def extract_text_from_image(image_path):
         print("Error reading image:", e)
     return ""
 
-# --- Analyze text with Groq ---
 def analyze_medical_report_with_groq(text):
     if not text:
         return "No text extracted from the file."
@@ -105,14 +101,11 @@ Return only valid JSON, no markdown, no extra explanation.
     except Exception as e:
         return f"Error during Groq API call:\n{e}"
 
-# --- Parse JSON from AI output ---
 def parse_and_format_result(output):
     try:
-        # Clean AI output if wrapped in triple backticks
         output = output.strip()
         if output.startswith("```") and output.endswith("```"):
             output = output[3:-3].strip()
-
         return json.loads(output)
     except Exception as e:
         return {
@@ -121,7 +114,6 @@ def parse_and_format_result(output):
             "details": str(e)
         }
 
-# --- API Route for Upload ---
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if 'file' not in request.files:
@@ -135,7 +127,6 @@ def upload_file():
     temp_file_path = f"temp_file{file_extension}"
     file.save(temp_file_path)
 
-    # Extract text
     if file_extension == ".pdf":
         print("Reading the medical report from PDF...")
         file_text = extract_text_from_pdf(temp_file_path)
@@ -159,8 +150,14 @@ def upload_file():
     if "error" in structured_result:
         return jsonify(structured_result), 500
 
-    return jsonify(structured_result), 200
+    # Split output into 3 parts
+    response_payload = {
+        "labHistory": structured_result.get("labHistory", {}),
+        "summary": structured_result.get("summary", {}),
+        "doctorConsultation": structured_result.get("doctorConsultation", {})
+    }
 
-# --- Run App ---
+    return jsonify(response_payload), 200
+
 if __name__ == "__main__":
     app.run(debug=True)
