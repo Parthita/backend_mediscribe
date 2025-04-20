@@ -143,7 +143,11 @@ def upload_file():
     structured_result = parse_and_format_result(result)
 
     os.remove(temp_file_path)
+
+    if isinstance(structured_result, str):
+        return jsonify({"error": "Unexpected string output", "raw_output": structured_result}), 500
+
     return jsonify(structured_result)
 
 if __name__ == "__main__":
-    app.run(debug=True) 
+    app.run(debug=True)
