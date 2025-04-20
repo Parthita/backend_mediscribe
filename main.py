@@ -1,9 +1,8 @@
-import fitz  
+import fitz  # PyMuPDF
 import requests
 import json
 from PIL import Image
 import pytesseract
-import io
 import os
 from flask import Flask, request, jsonify
 
@@ -143,7 +142,16 @@ def upload_file():
     structured_result = parse_and_format_result(result)
 
     os.remove(temp_file_path)
-    return jsonify(structured_result)
+
+    # Return pretty-printed JSON as text
+    try:
+        formatted_json = json.dumps(structured_result, indent=2)
+        return formatted_json, 200, {'Content-Type': 'application/json'}
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to format JSON output",
+            "details": str(e)
+        }), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
